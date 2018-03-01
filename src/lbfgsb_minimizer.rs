@@ -14,7 +14,7 @@ pub struct Lbfgsb<'a> {
     u: Vec<c_double>,
     nbd: Vec<c_int>,
     f: &'a FFunc,
-    g: &'a GFunc,
+    g: Option<&'a GFunc>,
     factr: c_double,
     pgtol: c_double,
     wa: Vec<c_double>,
@@ -31,17 +31,17 @@ pub struct Lbfgsb<'a> {
 impl<'a> Lbfgsb<'a> {
     // Constructor requires three mendatory parameters which are the initial
     // solution, function and the gradient function
-    pub fn new(xvec: &'a mut Vec<c_double>, func: &'a FFunc, gd: &'a GFunc) -> Self {
-        let len = xvec.len();
+    pub fn new(x: &'a mut Vec<c_double>, f: &'a FFunc, g: Option<&'a GFunc>) -> Self {
+        let len = x.len();
         Lbfgsb {
             n: len as i32,
             m: 5,
-            x: xvec,
+            x,
             l: vec![0.0; len],
             u: vec![0.0; len],
             nbd: vec![0; len],
-            f: func,
-            g: gd,
+            f,
+            g,
             factr: 0.0,
             pgtol: 0.0,
             wa: vec![0.0; 2 * 5 * len + 11 * 5 * 5 + 5 * len + 8 * 5],
@@ -60,8 +60,6 @@ impl<'a> Lbfgsb<'a> {
     pub fn minimize(&mut self) {
         let mut fval = 0.0;
         let mut gval = vec![0.0; self.x.len()];
-        let func = self.f;
-        let grad = self.g;
 
         // Converting fortran string "STRAT"
         stringfy(&mut self.task);
@@ -89,8 +87,11 @@ impl<'a> Lbfgsb<'a> {
             // Converting to rust string
             let tsk = unsafe { CStr::from_ptr(self.task.as_ptr()).to_string_lossy() };
             if &tsk[0..2] == "FG" {
-                fval = func(self.x);
-                gval = grad(self.x);
+                fval = (self.f)(self.x);
+                gval = match self.g {
+                    Some(g) => g(self.x),
+                    None => default_g(self.x, self.f, fval)
+                };
             } else if &tsk[0..5] == "NEW_X"
                     && self.max_iter == 0
                     && self.dsave[11] <= 1.0e-10 * (1.0 + fval.abs()) {
@@ -169,4 +170,20 @@ impl<'a> Lbfgsb<'a> {
     pub fn set_matric_correction(&mut self, m: i32) {
         self.m = m;
     }
+}
+
+fn default_g(x: &Vec<f64>, f: &FFunc, f0: f64) -> Vec<f64> {
+    let epsilon = 1e-08;
+    let n = x.len();
+    let mut grad = vec![0.0; n];
+    let mut ei = vec![0.0; n];
+    for i in 0..n {
+        ei[i] = epsilon;
+        for j in 0..n {
+            ei[j] *= x[j]
+        }
+        grad[i] = (f(&ei) - f0) / epsilon;
+        ei[i] = 0.0;
+    }
+    grad
 }
