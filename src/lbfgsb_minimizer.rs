@@ -3,6 +3,9 @@ use std::ffi::CStr;
 use lbfgsb::step;
 use string::stringfy;
 
+type FFunc = Fn(&Vec<c_double>) -> c_double;
+type GFunc = Fn(&Vec<c_double>) -> Vec<c_double>;
+
 pub struct Lbfgsb<'a> {
     n: c_int,
     m: c_int,
@@ -10,8 +13,8 @@ pub struct Lbfgsb<'a> {
     l: Vec<c_double>,
     u: Vec<c_double>,
     nbd: Vec<c_int>,
-    f: &'a Fn(&Vec<c_double>) -> c_double,
-    g: &'a Fn(&Vec<c_double>) -> Vec<c_double>,
+    f: &'a FFunc,
+    g: &'a GFunc,
     factr: c_double,
     pgtol: c_double,
     wa: Vec<c_double>,
@@ -28,11 +31,7 @@ pub struct Lbfgsb<'a> {
 impl<'a> Lbfgsb<'a> {
     // Constructor requires three mendatory parameters which are the initial
     // solution, function and the gradient function
-    pub fn new(
-        xvec: &'a mut Vec<c_double>,
-        func: &'a Fn(&Vec<c_double>) -> c_double,
-        gd: &'a Fn(&Vec<c_double>) -> Vec<c_double>
-    ) -> Self {
+    pub fn new(xvec: &'a mut Vec<c_double>, func: &'a FFunc, gd: &'a GFunc) -> Self {
         let len = xvec.len();
         Lbfgsb {
             n: len as i32,
@@ -68,32 +67,33 @@ impl<'a> Lbfgsb<'a> {
         stringfy(&mut self.task);
 
         loop {
-            step(self.n,
-                 self.m,
-                 &mut self.x,
-                 &self.l,
-                 &self.u,
-                 &self.nbd,
-                 fval,
-                 &gval,
-                 self.factr,
-                 self.pgtol,
-                 &mut self.wa,
-                 &mut self.iwa,
-                 &mut self.task,
-                 self.iprint,
-                 &mut self.csave,
-                 &mut self.lsave,
-                 &mut self.isave,
-                 &mut self.dsave);
+            step(
+                self.n,
+                self.m,
+                &mut self.x,
+                &self.l,
+                &self.u,
+                &self.nbd,
+                fval,
+                &gval,
+                self.factr,
+                self.pgtol,
+                &mut self.wa,
+                &mut self.iwa,
+                &mut self.task,
+                self.iprint,
+                &mut self.csave,
+                &mut self.lsave,
+                &mut self.isave,
+                &mut self.dsave);
             // Converting to rust string
             let tsk = unsafe { CStr::from_ptr(self.task.as_ptr()).to_string_lossy() };
             if &tsk[0..2] == "FG" {
                 fval = func(self.x);
                 gval = grad(self.x);
-            }
-            if &tsk[0..5] == "NEW_X" && self.max_iter == 0 &&
-               self.dsave[11] <= 1.0e-10 * (1.0 + fval.abs()) {
+            } else if &tsk[0..5] == "NEW_X"
+                    && self.max_iter == 0
+                    && self.dsave[11] <= 1.0e-10 * (1.0 + fval.abs()) {
                 println!("THE PROJECTED GRADIENT IS SUFFICIENTLY SMALL");
                 break;
             }
