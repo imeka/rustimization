@@ -17,5 +17,5 @@ fn test() {
         fmin.minimize();
     }
 
-    println!("{:?}", x);
+    assert_eq!(x[0], -4.0);
 }
