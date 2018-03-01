@@ -1,4 +1,5 @@
 use lbfgsb_sys::string as ffi;
+
 #[inline]
 pub fn stringfy(task: &mut [i8]) {
     unsafe {

@@ -2,6 +2,7 @@ use libc::{c_char, c_double, c_int};
 use std::ffi::CStr;
 use lbfgsb::step;
 use string::stringfy;
+
 pub struct Lbfgsb<'a> {
     n: c_int,
     m: c_int,
@@ -21,49 +22,52 @@ pub struct Lbfgsb<'a> {
     lsave: Vec<c_int>,
     isave: Vec<c_int>,
     dsave: Vec<c_double>,
-    max_iter: u32,
+    max_iter: u32
 }
+
 impl<'a> Lbfgsb<'a> {
-    // constructor requres three mendatory parameter which is the initial solution, function and the gradient function
-    pub fn new(xvec: &'a mut Vec<c_double>,
-               func: &'a Fn(&Vec<c_double>) -> c_double,
-               gd: &'a Fn(&Vec<c_double>) -> Vec<c_double>)
-               -> Self {
-        let len = xvec.len() as i32;
-        // creating lbfgs struct
+    // Constructor requires three mendatory parameters which are the initial
+    // solution, function and the gradient function
+    pub fn new(
+        xvec: &'a mut Vec<c_double>,
+        func: &'a Fn(&Vec<c_double>) -> c_double,
+        gd: &'a Fn(&Vec<c_double>) -> Vec<c_double>
+    ) -> Self {
+        let len = xvec.len();
         Lbfgsb {
-            n: len,
+            n: len as i32,
             m: 5,
             x: xvec,
-            l: vec![0.0f64;len as usize],
-            u: vec![0.0f64;len as usize],
-            nbd: vec![0;len as usize],
+            l: vec![0.0; len],
+            u: vec![0.0; len],
+            nbd: vec![0; len],
             f: func,
             g: gd,
-            factr: 0.0e0,
-            pgtol: 0.0e0,
-            wa: vec![0.0f64;(2*5*len+11*5*5+5*len+8*5) as usize],
-            iwa: vec![0;3*len as usize],
-            task: vec![0;60],
+            factr: 0.0,
+            pgtol: 0.0,
+            wa: vec![0.0; 2 * 5 * len + 11 * 5 * 5 + 5 * len + 8 * 5],
+            iwa: vec![0; 3 * len],
+            task: vec![0; 60],
             iprint: -1,
-            csave: vec![0;60],
+            csave: vec![0; 60],
             lsave: vec![0, 0, 0, 0],
-            isave: vec![0;44],
-            dsave: vec![0.0f64;29],
+            isave: vec![0; 44],
+            dsave: vec![0.0; 29],
             max_iter: 0,
         }
     }
-    // this function will start the optimization algorithm
+
+    // This function starts the optimization algorithm
     pub fn minimize(&mut self) {
-        let mut fval = 0.0f64;
-        let mut gval = vec![0.0f64;self.x.len()];
+        let mut fval = 0.0;
+        let mut gval = vec![0.0; self.x.len()];
         let func = self.f;
         let grad = self.g;
-        // converting fortran string "STRAT"
+
+        // Converting fortran string "STRAT"
         stringfy(&mut self.task);
-        // start of the loop
+
         loop {
-            // callign the fortran routine
             step(self.n,
                  self.m,
                  &mut self.x,
@@ -82,14 +86,14 @@ impl<'a> Lbfgsb<'a> {
                  &mut self.lsave,
                  &mut self.isave,
                  &mut self.dsave);
-            // converting to rust string
+            // Converting to rust string
             let tsk = unsafe { CStr::from_ptr(self.task.as_ptr()).to_string_lossy() };
             if &tsk[0..2] == "FG" {
                 fval = func(self.x);
                 gval = grad(self.x);
             }
             if &tsk[0..5] == "NEW_X" && self.max_iter == 0 &&
-               self.dsave[11] <= 1.0e-10 * (1.0e0 + fval.abs()) {
+               self.dsave[11] <= 1.0e-10 * (1.0 + fval.abs()) {
                 println!("THE PROJECTED GRADIENT IS SUFFICIENTLY SMALL");
                 break;
             }
@@ -109,54 +113,59 @@ impl<'a> Lbfgsb<'a> {
             }
         }
     }
-    // this function returns the solution after minimization
+
+    // Returns the solution after minimization
     pub fn get_x(&self) -> Vec<c_double> {
         self.x.clone()
     }
-    // this function is used to set lower bounds to a variable
+
+    // Set lower bounds to a variable
     pub fn set_lower_bound(&mut self, index: usize, value: f64) {
-        if self.nbd[index] == 1 || self.nbd[index] == 2 {
+        let var = &mut self.nbd[index];
+        if *var == 1 || *var == 2 {
             println!("variable already has Lower Bound");
         } else {
-            let temp = self.nbd[index] - 1;
-            self.nbd[index] = if temp < 0 {
-                -temp
-            } else {
-                temp
-            };
+            *var = (*var - 1).abs();
             self.l[index] = value;
         }
     }
-    // this function is used to set upper bounds to a variable
+
+    // Set upper bounds to a variable
     pub fn set_upper_bound(&mut self, index: usize, value: f64) {
-        if self.nbd[index] == 3 || self.nbd[index] == 2 {
+        let var = &mut self.nbd[index];
+        if *var == 2 || *var == 3 {
             println!("variable already has Lower Bound");
         } else {
-            self.nbd[index] = 3 - self.nbd[index];
+            *var = 3 - *var;
             self.u[index] = value;
         }
     }
-    // set the verbosity level
+
+    // Set the verbosity level
     pub fn set_verbosity(&mut self, l: i32) {
         self.iprint = l;
     }
-    // set termination tolerance
+
+    // Set termination tolerance
     // 1.0e12 for low accuracy
     // 1.0e7  for moderate accuracy
     // 1.0e1  for extremely high accuracy
     pub fn set_termination_tolerance(&mut self, t: f64) {
         self.factr = t;
     }
-    // set tolerance of projection gradient
+
+    // Set tolerance of projection gradient
     pub fn set_tolerance(&mut self, t: f64) {
         self.pgtol = t;
     }
-    // set max iteration
+
+    // Set max iteration
     pub fn max_iteration(&mut self, i: u32) {
         self.max_iter = i;
     }
-    // set maximum number of variable metric corrections
-    // The range  3 <= m <= 20 is recommended
+
+    // Set maximum number of variable metric corrections
+    // The range 3 <= m <= 20 is recommended
     pub fn set_matric_correction(&mut self, m: i32) {
         self.m = m;
     }
