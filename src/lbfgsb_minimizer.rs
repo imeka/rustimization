@@ -3,9 +3,6 @@ use std::ffi::CStr;
 use lbfgsb::step;
 use string::stringfy;
 
-type FFunc = Fn(&Vec<c_double>) -> c_double;
-type GFunc = Fn(&Vec<c_double>) -> Vec<c_double>;
-
 pub struct Lbfgsb<'a> {
     n: c_int,
     m: c_int,
@@ -13,8 +10,8 @@ pub struct Lbfgsb<'a> {
     l: Vec<c_double>,
     u: Vec<c_double>,
     nbd: Vec<c_int>,
-    f: &'a FFunc,
-    g: Option<&'a GFunc>,
+    f: &'a Fn(&Vec<c_double>) -> c_double,
+    g: Option<&'a Fn(&Vec<c_double>) -> Vec<c_double>>,
     factr: c_double,
     pgtol: c_double,
     wa: Vec<c_double>,
@@ -31,7 +28,11 @@ pub struct Lbfgsb<'a> {
 impl<'a> Lbfgsb<'a> {
     // Constructor requires three mendatory parameters which are the initial
     // solution, function and the gradient function
-    pub fn new(x: &'a mut Vec<c_double>, f: &'a FFunc, g: Option<&'a GFunc>) -> Self {
+    pub fn new(
+        x: &'a mut Vec<c_double>,
+        f: &'a Fn(&Vec<c_double>) -> c_double,
+        g: Option<&'a Fn(&Vec<c_double>) -> Vec<c_double>>
+    ) -> Self {
         let len = x.len();
         Lbfgsb {
             n: len as i32,
@@ -172,7 +173,7 @@ impl<'a> Lbfgsb<'a> {
     }
 }
 
-fn default_g(x: &Vec<f64>, f: &FFunc, f0: f64) -> Vec<f64> {
+fn default_g(x: &Vec<f64>, f: &Fn(&Vec<c_double>) -> c_double, f0: f64) -> Vec<f64> {
     let epsilon = 1e-08;
     let n = x.len();
     let mut grad = vec![0.0; n];
