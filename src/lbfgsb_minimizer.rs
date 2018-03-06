@@ -181,10 +181,12 @@ fn default_g(x: &Vec<f64>, f: &Fn(&Vec<c_double>) -> c_double, f0: f64) -> Vec<f
     for i in 0..n {
         ei[i] = epsilon;
         for j in 0..n {
-            ei[j] *= x[j]
+            ei[j] += x[j]
         }
         grad[i] = (f(&ei) - f0) / epsilon;
-        ei[i] = 0.0;
+        for j in 0..n {
+            ei[j] = 0.0;
+        }
     }
     grad
 }
