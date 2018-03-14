@@ -91,7 +91,7 @@ impl<'a> Lbfgsb<'a> {
                 break;
             }
             if &tsk[0..4] == "CONV" {
-                println!("convergence!");
+                // println!("convergence!");
                 break;
             }
             if &tsk[0..5] == "ERROR" {
