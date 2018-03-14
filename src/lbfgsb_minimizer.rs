@@ -1,4 +1,5 @@
 use libc::{c_char, c_double, c_int};
+use std::f64;
 use std::ffi::CStr;
 use lbfgsb::step;
 use string::stringfy;
@@ -58,33 +59,20 @@ impl<'a> Lbfgsb<'a> {
     }
 
     // This function starts the optimization algorithm
-    pub fn minimize(&mut self) {
+    pub fn minimize(&mut self) -> f64 {
         let mut fval = 0.0;
         let mut gval = vec![0.0; self.x.len()];
+        let factr = self.factr / f64::EPSILON;
 
         // Converting fortran string "STRAT"
         stringfy(&mut self.task);
 
         loop {
             step(
-                self.n,
-                self.m,
-                &mut self.x,
-                &self.l,
-                &self.u,
-                &self.nbd,
-                fval,
-                &gval,
-                self.factr,
-                self.pgtol,
-                &mut self.wa,
-                &mut self.iwa,
-                &mut self.task,
-                self.iprint,
-                &mut self.csave,
-                &mut self.lsave,
-                &mut self.isave,
-                &mut self.dsave);
+                self.n, self.m, &mut self.x, &self.l, &self.u, &self.nbd, fval, &gval, factr,
+                self.pgtol, &mut self.wa, &mut self.iwa, &mut self.task, self.iprint,
+                &mut self.csave, &mut self.lsave, &mut self.isave, &mut self.dsave);
+
             // Converting to rust string
             let tsk = unsafe { CStr::from_ptr(self.task.as_ptr()).to_string_lossy() };
             if &tsk[0..2] == "FG" {
@@ -114,6 +102,7 @@ impl<'a> Lbfgsb<'a> {
                 break;
             }
         }
+        fval
     }
 
     // Returns the solution after minimization
