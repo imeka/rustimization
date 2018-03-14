@@ -13,4 +13,4 @@ A rust optimization library which includes L-BFGS-B and Conjugate Gradient algor
 
 [dependencies]
 lbfgsb-sys = "0.1.0"
-libc = "0.2.11"
+libc = "0.2"
