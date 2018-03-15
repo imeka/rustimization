@@ -15,7 +15,6 @@ pub struct Lbfgsb<'a> {
     g: Option<&'a Fn(&Vec<c_double>) -> Vec<c_double>>,
     factr: c_double,
     pgtol: c_double,
-    wa: Vec<c_double>,
     iwa: Vec<c_int>,
     task: Vec<c_char>,
     iprint: c_int,
@@ -34,20 +33,19 @@ impl<'a> Lbfgsb<'a> {
         f: &'a Fn(&Vec<c_double>) -> c_double,
         g: Option<&'a Fn(&Vec<c_double>) -> Vec<c_double>>
     ) -> Self {
-        let len = x.len();
+        let n = x.len();
         Lbfgsb {
-            n: len as i32,
+            n: n as i32,
             m: 5,
             x,
-            l: vec![0.0; len],
-            u: vec![0.0; len],
-            nbd: vec![0; len],
+            l: vec![0.0; n],
+            u: vec![0.0; n],
+            nbd: vec![0; n],
             f,
             g,
             factr: 0.0,
             pgtol: 0.0,
-            wa: vec![0.0; 2 * 5 * len + 11 * 5 * 5 + 5 * len + 8 * 5],
-            iwa: vec![0; 3 * len],
+            iwa: vec![0; 3 * n],
             task: vec![0; 60],
             iprint: -1,
             csave: vec![0; 60],
@@ -60,8 +58,12 @@ impl<'a> Lbfgsb<'a> {
 
     // This function starts the optimization algorithm
     pub fn minimize(&mut self) -> f64 {
+        let n = self.x.len();
+        let m = self.m as usize;
+        let mut wa: Vec<c_double> = vec![0.0; 2 * m * n + 5 * n + 11 * m * m + 8 * m];
+
         let mut fval = 0.0;
-        let mut gval = vec![0.0; self.x.len()];
+        let mut gval = vec![0.0; n];
         let factr = self.factr / f64::EPSILON;
 
         // Converting fortran string "STRAT"
@@ -70,7 +72,7 @@ impl<'a> Lbfgsb<'a> {
         loop {
             step(
                 self.n, self.m, &mut self.x, &self.l, &self.u, &self.nbd, fval, &gval, factr,
-                self.pgtol, &mut self.wa, &mut self.iwa, &mut self.task, self.iprint,
+                self.pgtol, &mut wa, &mut self.iwa, &mut self.task, self.iprint,
                 &mut self.csave, &mut self.lsave, &mut self.isave, &mut self.dsave);
 
             // Converting to rust string
