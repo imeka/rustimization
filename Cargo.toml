@@ -15,5 +15,6 @@ A rust optimization library which includes L-BFGS-B and Conjugate Gradient algor
 libc = "0.2"
 
 [dependencies.lbfgsb-sys]
-version = "0.1.0"
+#version = "0.1"
+git = "https://github.com/imeka/lbfgsb-sys"
 features = ["static"]
