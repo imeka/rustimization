@@ -1,4 +1,4 @@
-use libc::{c_char, c_double, c_int};
+use std::os::raw::{c_char, c_double, c_int};
 use std::f64;
 use std::ffi::CStr;
 use lbfgsb::step;

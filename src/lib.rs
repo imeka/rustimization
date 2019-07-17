@@ -1,4 +1,3 @@
-extern crate libc;
 extern crate lbfgsb_sys;
 
 pub mod lbfgsb_minimizer;
