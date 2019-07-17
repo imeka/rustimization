@@ -1,25 +1,26 @@
+use std::os::raw::{c_char, c_double, c_int};
 use lbfgsb_sys::lbfgsb as ffi;
 
 #[inline]
 pub fn step(
-    n: i32,
-    m: i32,
-    x: &mut [f64],
-    l: &[f64],
-    u: &[f64],
-    nbd: &[i32],
-    f: f64,
-    g: &[f64],
-    factr: f64,
-    pgtol: f64,
-    wa: &mut [f64],
-    iwa: &mut [i32],
-    task: &mut [i8],
-    iprint: i32,
-    csave: &mut [i8],
-    lsave: &mut [i32],
-    isave: &mut [i32],
-    dsave: &mut [f64])
+    n: c_int,
+    m: c_int,
+    x: &mut [c_double],
+    l: &[c_double],
+    u: &[c_double],
+    nbd: &[c_int],
+    f: c_double,
+    g: &[c_double],
+    factr: c_double,
+    pgtol: c_double,
+    wa: &mut [c_double],
+    iwa: &mut [c_int],
+    task: &mut [c_char],
+    iprint: c_int,
+    csave: &mut [c_char],
+    lsave: &mut [c_int],
+    isave: &mut [c_int],
+    dsave: &mut [c_double])
 {
     unsafe {
         ffi::setulb_(
